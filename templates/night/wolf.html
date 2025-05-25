@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>狼人杀人</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #2c3e50;
+    color: #ecf0f1;
+    padding: 20px;
+    text-align: center;
+  }
+  h2 {
+    margin-bottom: 20px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+  }
+  #players-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 30px;
+  }
+  .player-card {
+    background: #34495e;
+    border-radius: 8px;
+    padding: 15px 25px;
+    cursor: pointer;
+    user-select: none;
+    width: 140px;
+    box-shadow: 0 4px 6px rgb(0 0 0 / 0.3);
+    transition: background-color 0.3s, transform 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .player-card.alive:hover {
+    background: #27ae60;
+    transform: scale(1.05);
+  }
+  .player-card.selected {
+    background: #e74c3c;
+    box-shadow: 0 0 10px #e74c3c;
+    transform: scale(1.1);
+  }
+  .player-name {
+    font-size: 1.1em;
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+  .player-role {
+    font-size: 0.9em;
+    color: #bdc3c7;
+  }
+  .player-status {
+    margin-top: 10px;
+    font-size: 0.8em;
+    font-weight: 700;
+  }
+  #night-finish-btn {
+    background: #e67e22;
+    border: none;
+    padding: 12px 35px;
+    font-size: 1.1em;
+    border-radius: 25px;
+    cursor: pointer;
+    color: white;
+    transition: background-color 0.3s;
+    box-shadow: 0 4px 8px rgb(230 126 34 / 0.5);
+  }
+  #night-finish-btn:hover {
+    background: #d35400;
+  }
+  /* 狼人队友提示样式 */
+  #werewolf-teammates {
+    margin-top: 15px;
+    font-weight: bold;
+    color: #f39c12;
+  }
+</style>
+</head>
+<body>
+
+<h2>选择要杀的玩家</h2>
+
+<div id="players-container">
+  <!-- 玩家卡片动态渲染在这里 -->
+</div>
+
+<button id="night-finish-btn" disabled>完成操作</button>
+<div id="werewolf-teammates"></div>
+
+<script>
+  let selectedPlayerId = null;
+
+  // 渲染玩家卡片，只显示非狼人且存活的玩家
+  function renderPlayers(players) {
+    const container = document.getElementById('players-container');
+    container.innerHTML = ''; // 清空
+
+    // 只显示非狼人且存活的玩家，供杀人选择
+    const targetPlayers = players.filter(p => p.alive && p.role !== 'WEREWOLF');
+
+    // 过滤出狼人队友，且存活
+    const werewolfTeammates = players.filter(p => p.alive && p.role === 'WEREWOLF' && p.type !== 'HUMAN');
+
+    // 狼人队友信息放按钮下面
+    const teammateContainer = document.getElementById('werewolf-teammates');
+    if (werewolfTeammates.length > 0) {
+      teammateContainer.innerText = '你的狼人队友：' + werewolfTeammates.map(p => p.name || ('玩家' + p.name)).join('，');
+    } else {
+      teammateContainer.innerText = '';
+    }
+
+    if (targetPlayers.length === 0) {
+      container.innerHTML += '<p>没有可选的玩家</p>';
+      document.getElementById('night-finish-btn').disabled = true;
+      return;
+    }
+
+    targetPlayers.forEach(player => {
+      const card = document.createElement('div');
+      card.classList.add('player-card', 'alive');
+      card.dataset.id = player.id;
+
+      card.innerHTML = `
+        <div class="player-name">${player.name || '玩家' + player.name}</div>
+        <div class="player-role">${player.type} 玩家</div>
+        <div class="player-status">存活</div>
+      `;
+
+      card.onclick = () => {
+        document.querySelectorAll('.player-card.selected').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedPlayerId = player.name;
+        document.getElementById('night-finish-btn').disabled = false;
+      };
+
+      container.appendChild(card);
+    });
+
+    // 初始化按钮禁用状态
+    selectedPlayerId = null;
+    document.getElementById('night-finish-btn').disabled = true;
+  }
+
+  // 定时刷新玩家列表
+  function fetchAndRenderPlayers() {
+    fetch('/get_players')
+      .then(res => res.json())
+      .then(data => {
+        renderPlayers(data.players);
+      })
+      .catch(err => {
+        console.error('获取玩家失败:', err);
+      });
+  }
+
+  // 发送杀人请求
+  document.getElementById('night-finish-btn').onclick = function () {
+    if (!selectedPlayerId) return alert('请先选择一个玩家');
+
+    fetch('/night_done', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ kill_id: selectedPlayerId })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        // 隐藏按钮 + 显示提示
+        document.getElementById('night-finish-btn').style.display = 'none';
+
+        // 创建等待提示元素（若不存在）
+        let waitingMsg = document.getElementById('waiting-message');
+        if (!waitingMsg) {
+          waitingMsg = document.createElement('div');
+          waitingMsg.id = 'waiting-message';
+          waitingMsg.innerText = '你已完成当前操作，请等待其他玩家完成操作...';
+          waitingMsg.style.marginTop = '1rem';
+          waitingMsg.style.fontWeight = 'bold';
+          document.body.appendChild(waitingMsg);
+        } else {
+          waitingMsg.style.display = 'block';
+        }
+
+        // 开始轮询状态
+        const intervalId = setInterval(() => {
+          fetch('/night_status')
+            .then(res => res.json())
+            .then(statusData => {
+              if (statusData.redirect) {
+                clearInterval(intervalId);
+                window.location.href = statusData.redirect;
+              }
+            });
+        }, 5000);
+      } else {
+        alert(data.error || '提交失败');
+      }
+    });
+  };
+
+  // 初始化
+  fetchAndRenderPlayers();
+  setInterval(fetchAndRenderPlayers, 5000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>狼人杀游戏房间</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+<div class="room-container">
+  <!-- 左侧：玩家区域 -->
+  <div class="players-column">
+    <div class="player-list">
+      {% for i in range(6) %}
+        <div class="player-card">
+          {% if i < players|length and players[i] != '' %}
+            <div class="player-info">
+              {% set p = players[i] %}
+              {% if p.__class__.__name__ == 'Role' %}
+                <strong>
+                  {{ p.name }}{{ "（出局）" if not p.alive else "" }}
+                  {{ " 真人" if p.player_type.name == "HUMAN" else " AI" }}
+                </strong><br>
+                {% if show_roles %}
+                  <small>身份：{{ p.role_type.name }}</small><br>
+                {% endif %}
+                {% if p.player_type.name == "AI" %}
+                  <small>Model: {{ p.model_name }}</small>
+                {% endif %}
+              {% else %}
+                {% if p is mapping and p['type'] == 'AI' %}
+                  <strong>P{{ i+1 }} AI</strong><br>
+                  <small>Model: {{ p['model'] }}</small>
+                {% else %}
+                  <strong>P{{ i+1 }} 真人</strong>
+                {% endif %}
+              {% endif %}
+              <!-- 投票按钮嵌入此处 -->
+              {% if game_state.day_stage == 'vote' and player_id == i and p.player_type.name == "HUMAN" %}
+                {% for target in players %}
+                  {% if target.alive and target != p %}
+                    <form action="{{ url_for('vote_handle') }}" method="post" class="vote-form" style="margin-top: 5px;" onsubmit="return handleVoteSubmit(this);">
+                      <input type="hidden" name="voted_id" value="{{ players.index(target) }}">
+                      <button type="submit" class="vote-button">投 {{ target.name }} (P{{ players.index(target) + 1 }})</button>
+                    </form>
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+
+            </div>
+          {% else %}
+            <strong>P{{ i+1 }}</strong><br>
+            <small>等待加入</small>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- 发言输入框移到左下角 -->
+<!--    {% if game_state.day_stage == 'speech' and player_id == game_state.speech_order[game_state.current_speaker_index] %}-->
+<!--      <form action="{{ url_for('submit_speech') }}" method="post" class="speech-form">-->
+<!--        <textarea name="speech" placeholder="请输入你的发言内容..." required class="speech-input"></textarea>-->
+<!--        <button type="submit" class="speech-submit">提交</button>-->
+<!--      </form>-->
+<!--    {% endif %}-->
+
+    {% if game_state.day_stage == 'speech' and player_id == game_state.speech_order[game_state.current_speaker_index] %}
+      <form id="speech-form" action="{{ url_for('submit_speech') }}" method="post" class="speech-form" onsubmit="return handleSpeechSubmit();">
+        <textarea name="speech" placeholder="请输入你的发言内容..." required class="speech-input" id="speech-input"></textarea>
+        <button type="submit" class="speech-submit" id="speech-submit-btn">提交</button>
+      </form>
+    {% endif %}
+
+
+    {% if game_state.day_stage == 'result' and game_state.executed_player is not none %}
+      {% set executed_id = game_state.executed_player %}
+      {% set executed_player = players[executed_id] %}
+
+      {% if player_id == executed_player.player_id %}
+        <form action="{{ url_for('submit_last_words') }}" method="post" class="speech-form">
+          <input type="hidden" name="player_id" value="{{ executed_player.player_id }}">
+          <textarea name="last_words" placeholder="请输入你的遗言..." required class="speech-input"></textarea>
+          <button type="submit" class="speech-submit">提交遗言</button>
+        </form>
+      {% else %}
+        <div class="system-message">等待被放逐的玩家 {{ executed_player.name }} 发表遗言...</div>
+      {% endif %}
+    {% endif %}
+
+  </div>
+
+  <!-- 右侧：聊天框区域 -->
+  <div class="chat-column">
+    <div class="chat-box" id="chat-box">
+      {% for msg in system_messages %}
+        {% if '说' not in msg %}
+          <div class="chat-message system">{{ msg | e }}</div>
+        {% elif '说' in msg %}
+          <div class="chat-message player">{{ msg | e }}</div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='room.js') }}"></script>
+
+<script>
+  gameOver = {{ 'true' if game_state.game_over else 'false' }};
+
+  document.addEventListener('DOMContentLoaded', () => {
+    scrollChatToBottom();
+    checkGameStatus(); // 页面加载时先查一次
+    updateSystemMessages(); // 页面加载时查一次系统消息
+
+    setInterval(() => {
+      if (!gameOver) checkGameStatus();
+    }, 10000);
+
+    setInterval(() => {
+      if (!gameOver) updateSystemMessages();
+    }, 3000);
+
+    {% if game_state.day_stage not in ['speech', 'vote', 'result'] %}
+      GameGoing();
+    {% else %}
+      console.log("当前阶段为 speech 或 vote 或 result，暂停自动跳转。");
+    {% endif %}
+  });
+
+
+  function scrollChatToBottom() {
+    const chatBox = document.getElementById('chat-box');
+    if (chatBox) {
+      // 强制触发回流，确保 chatBox 高度更新后再滚动
+      chatBox.offsetHeight;
+      requestAnimationFrame(() => {
+        chatBox.scrollTop = chatBox.scrollHeight;
+      });
+    }
+  }
+</script>
+
+
+
+</body>
+</html>

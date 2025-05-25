@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>狼人杀身份确认</title>
+    <style>
+        #player-cards {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 20px;
+        }
+
+        .card {
+            width: 120px;
+            height: 160px;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            position: relative;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #333;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            backface-visibility: hidden;
+        }
+
+        .card-front {
+            background-color: #f5f5f5;
+        }
+
+        .card-back {
+            background-color: #4CAF50;
+            color: white;
+            transform: rotateY(180deg);
+        }
+
+        button {
+            margin: 20px;
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>点击角色卡，翻牌查看身份</h2>
+<div id="player-cards">
+    <div class="card" data-player="P1">
+        <div class="card-inner">
+            <div class="card-front">P1</div>
+            <div class="card-back">未知</div>
+        </div>
+    </div>
+    <div class="card" data-player="P2">
+        <div class="card-inner">
+            <div class="card-front">P2</div>
+            <div class="card-back">未知</div>
+        </div>
+    </div>
+    <div class="card" data-player="P3">
+        <div class="card-inner">
+            <div class="card-front">P3</div>
+            <div class="card-back">未知</div>
+        </div>
+    </div>
+    <div class="card" data-player="P4">
+        <div class="card-inner">
+            <div class="card-front">P4</div>
+            <div class="card-back">未知</div>
+        </div>
+    </div>
+    <div class="card" data-player="P5">
+        <div class="card-inner">
+            <div class="card-front">P5</div>
+            <div class="card-back">未知</div>
+        </div>
+    </div>
+    <div class="card" data-player="P6">
+        <div class="card-inner">
+            <div class="card-front">P6</div>
+            <div class="card-back">未知</div>
+        </div>
+    </div>
+</div>
+
+<button id="night-finish-btn">完成操作</button>
+
+<script>
+let hasChecked = false; // 预言家是否已查验过
+
+document.querySelectorAll(".card").forEach(card => {
+    card.onclick = function () {
+        if (hasChecked) {
+            alert("你已经查验过一名玩家了，不能再次查验！");
+            return;
+        }
+
+        if (card.classList.contains("flipped")) {
+            return;
+        }
+
+        const player = card.getAttribute("data-player");
+
+        fetch(`/get_identity?player=${player}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.label) {
+                    if (data.if_alive !== "存活"){
+                        alert(`${player} 已死亡，不能查验！`);
+                        return;
+                    }
+                    if (data.role === "SEER"){
+                        alert(`${player} 是预言家，不能查验自己！`);
+                        return;
+                    }
+                    card.classList.add("flipped");
+
+                    const back = card.querySelector(".card-back");
+                    back.textContent = data.label;
+
+                    card.onclick = null;
+
+                    hasChecked = true; // ✅ 标记已查验
+                } else {
+                    alert(`${player} 的身份未知或未设置。`);
+                }
+            });
+    };
+});
+
+document.getElementById("night-finish-btn").onclick = function () {
+    const btn = document.getElementById("night-finish-btn");
+    btn.style.display = "none";
+
+    let waiting = document.getElementById("waiting-message");
+    if (!waiting) {
+        waiting = document.createElement("div");
+        waiting.id = "waiting-message";
+        waiting.innerText = "你已完成操作，请等待其他玩家...";
+        waiting.style.fontWeight = "bold";
+        waiting.style.marginTop = "1rem";
+        document.body.appendChild(waiting);
+    } else {
+        waiting.style.display = "block";
+    }
+
+    fetch("/night_done", { method: "POST" })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          alert(data.error || "提交失败");
+          btn.style.display = "block";
+          waiting.style.display = "none";
+        }
+      });
+};
+
+// 轮询后端状态，每 5 秒判断是否跳转页面
+setInterval(() => {
+    fetch("/night_status")
+      .then(res => res.json())
+      .then(data => {
+        if (data.redirect) {
+          window.location.href = data.redirect;
+        }
+      });
+}, 5000);
+</script>
+
+</body>
+</html>
