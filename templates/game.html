@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>房间游戏</title>
+    <style>
+        body {
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            align-items: flex-start; /* 顶部对齐 */
+            justify-content: flex-start; /* 左侧对齐 */
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .player-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        .circle-wrapper {
+            position: relative;
+        }
+        .circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            text-align: center;
+        }
+        .host-label {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: #ffcc00;
+            color: black;
+            font-size: 12px;
+            padding: 2px 5px;
+            border-radius: 5px;
+        }
+        .info-area {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 150px;
+            font-size: 14px;
+        }
+        .add-form {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .add-button {
+            padding: 4px 8px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .model-select {
+            font-size: 14px;
+            padding: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% for i in range(6) %}
+            <div class="player-row">
+                <!-- 玩家头像 -->
+                <div class="circle-wrapper">
+                    <div class="circle">
+                        {% if i < players|length and players[i] != '' %}
+                            {% if players[i] is mapping and players[i]['type'] == 'AI' %}
+                                P{{ i + 1 }}
+                            {% else %}
+                                P{{ i + 1 }}
+                            {% endif %}
+                        {% else %}
+                            P{{ i + 1 }}
+                        {% endif %}
+                    </div>
+                    {% if i == 0 and players|length > 0 and players[0] != '' %}
+                        <div class="host-label">房主</div>
+                    {% endif %}
+                </div>
+
+                <!-- 信息显示区域 -->
+                <div class="info-area">
+                    {% if i < players|length and players[i] != '' %}
+                        {% if players[i] is mapping and players[i]['type'] == 'AI' %}
+                            <div>AI</div>
+                            <div>model: {{ players[i]['model'] }}</div>
+                        {% elif i == 0 and is_host %}
+                            <!-- 房主是真人但想变成AI -->
+                            <div>
+                                <select id="host_model_select">
+                                    {% for m in model_options %}
+                                        <option value="{{ m }}">{{ m }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button onclick="setSelfAI()">设为AI</button>
+                            </div>
+                        {% else %}
+                            <div>HUMAN</div>
+                        {% endif %}
+                    {% else %}
+                        {% if is_host %}
+                            <form class="add-form" action="{{ url_for('add_ai') }}" method="post">
+                                <input type="hidden" name="index" value="{{ i }}">
+                                <select name="model" class="model-select">
+                                    {% for m in model_options %}
+                                        <option value="{{ m }}">{{ m }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="add-button" type="submit">+</button>
+                            </form>
+                        {% else %}
+                            <div>（空位）</div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+<script>
+    function setSelfAI() {
+            const model = document.getElementById('host_model_select').value;
+            fetch('/set_self_ai', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: `model=${model}`
+            }).then(res => res.json()).then(data => {
+            if (data.success) {
+                alert("你现在是 AI 了！");
+                location.reload();
+            } else {
+                alert("设置失败: " + data.error);
+            }
+            });
+        }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        let currentToken = "{{ refresh_token }}";
+        let isHost = {{ 'true' if is_host else 'false' }};
+        let playerCount = {{ players|length }};
+
+        function checkRoomStatus() {
+            fetch('/check_ready')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.ready) {
+                        window.location.href = "/room";
+                    }
+                });
+        }
+
+        function checkRefresh() {
+            fetch('/get_refresh_token')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.token !== currentToken) {
+                        window.location.reload();
+                    }
+                });
+        }
+
+        // 当人数达到6人，并且是房主，弹出提示框
+        if (playerCount === 6 && isHost) {
+            setTimeout(() => {
+                if (confirm("是否公开身份？点击“确定”为公开，点击“取消”为隐藏")) {
+                    submitReveal("yes");
+                } else {
+                    submitReveal("no");
+                }
+            }, 1000); // 延迟1秒弹窗，确保页面加载完毕
+        }
+
+        function submitReveal(choice) {
+            fetch('/submit_reveal', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'reveal=' + encodeURIComponent(choice)
+            }).then(response => response.json())
+              .then(data => {
+                  if (!data.success) {
+                      alert("提交失败: " + data.error);
+                  }
+              });
+        }
+
+        setInterval(checkRefresh, 3000);
+        setInterval(checkRoomStatus, 3000);
+    });
+</script>
+</body>
+</html>

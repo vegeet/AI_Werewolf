@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>猎人技能发动</title>
+    <style>
+        .player-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 50px;
+            gap: 30px;
+        }
+
+        .player {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            background-color: #f2f2f2;
+            transition: 0.3s;
+        }
+
+        .player:hover {
+            background-color: #ddd;
+        }
+
+        .player.selected {
+            background-color: #ff4d4d;
+            color: white;
+        }
+
+        #submit-btn {
+            display: block;
+            margin: 30px auto;
+            padding: 10px 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h2 style="text-align: center;">猎人 {{ hunter.name }}（P{{ hunter_id + 1 }}）请选择要击杀的对象</h2>
+
+    <form method="post">
+        <div class="player-container">
+            {% for target in targets %}
+                <div class="player" data-id="{{ target.player.player_id }}">
+                    {{ target.player.name }}
+                </div>
+            {% endfor %}
+        </div>
+
+        <input type="hidden" name="shot_id" id="shot_id">
+        <button type="submit" id="submit-btn" disabled>杀死</button>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const players = document.querySelectorAll('.player');
+            const shotInput = document.getElementById('shot_id');
+            const submitBtn = document.getElementById('submit-btn');
+
+            players.forEach(player => {
+                player.addEventListener('click', () => {
+                    players.forEach(p => p.classList.remove('selected'));
+                    player.classList.add('selected');
+                    shotInput.value = player.dataset.id;
+                    console.log("设置 shot_id 为", shotInput.value);
+                    submitBtn.disabled = false;
+                });
+            });
+        });
+    </script>
+</body>
+</html>

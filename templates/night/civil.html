@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>夜晚行动完成</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: "Helvetica Neue", sans-serif;
+            background-color: rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .modal {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+            text-align: center;
+            width: 300px;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .modal p {
+            color: #666;
+            margin: 15px 0 25px;
+        }
+
+        #night-finish-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #night-finish-btn:hover {
+            background-color: #45a049;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="modal">
+  <h2 id="modal-title">你没有任何可操作选项</h2>
+  <p id="modal-text">请点击下方按钮继续</p>
+  <button id="night-finish-btn">确认</button>
+</div>
+
+<script>
+// document.getElementById("night-finish-btn").onclick = function () {
+//   fetch("/night_done", {
+//     method: "POST"
+//   })
+//   .then(response => response.json())
+//   .then(data => {
+//     if (data.success) {
+//       // 替换提示文本，禁用按钮
+//       document.getElementById("modal-title").innerText = "你已完成夜晚操作";
+//       document.getElementById("modal-text").innerText = "请等待其他玩家完成操作...";
+//       document.getElementById("night-finish-btn").style.display = "none";
+//     } else {
+//       alert(data.error || "提交失败");
+//     }
+//   });
+// };
+document.getElementById("night-finish-btn").onclick = function () {
+  fetch("/night_done", {
+    method: "POST",
+    headers: { 'Content-Type': 'application/json' },
+    // 你如果需要发送数据，比如狼人杀目标，放在body里，比如：body: JSON.stringify({kill_id: selectedId})
+    body: JSON.stringify({})
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      document.getElementById("modal-title").innerText = "你已完成当前操作";
+      document.getElementById("modal-text").innerText = "请等待其他玩家完成操作...";
+      document.getElementById("night-finish-btn").style.display = "none";
+    } else {
+      alert(data.error || "提交失败");
+    }
+  });
+};
+
+// 每5秒轮询一次夜晚状态
+setInterval(() => {
+  fetch("/night_status")
+    .then(res => res.json())
+    .then(data => {
+      if (data.redirect) {
+        window.location.href = data.redirect;
+      }
+    });
+}, 5000);
+</script>
+
+</body>
+</html>

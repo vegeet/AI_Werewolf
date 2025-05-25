@@ -1,0 +1,122 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+  background-color: #f0f8ff;
+}
+
+.room-container {
+  display: flex;
+  height: 100vh; /* 页面总高度 */
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* 左侧玩家信息和发言输入框 */
+.players-column {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* 上下分布，发言框到底部 */
+}
+
+.player-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.player-card {
+  width: 100%;
+  background-color: #e0e0e0;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 右侧聊天框 */
+.chat-column {
+  flex-grow: 1;
+  margin-left: 20px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.chat-box {
+  flex-grow: 1;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  padding: 10px;
+  background-color: #fafafa;
+  border-radius: 8px;
+  max-height: 100%;
+  box-sizing: border-box;
+}
+
+.chat-message {
+  margin-bottom: 10px;
+  padding: 8px;
+  border-radius: 5px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  min-height: 24px;
+
+  opacity: 0;
+  transition: opacity 0.2s ease-in;
+}
+
+.chat-message.system {
+  background-color: #ffffcc;
+  color: #333;
+  opacity: 1;
+}
+
+.chat-message.player {
+  background-color: #d0eaff;
+  color: #000;
+  opacity: 1;
+}
+
+/* 发言输入框样式 */
+.speech-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.speech-input {
+  resize: none;
+  height: 100px;
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+.speech-submit {
+  align-self: flex-end;
+  padding: 8px 16px;
+  font-size: 14px;
+  background-color: #007bff;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}
+
+.speech-submit:hover {
+  background-color: #0056b3;
+}
