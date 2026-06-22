@@ -53,11 +53,11 @@ def create_role():
     ]
 
     # 移除猎人，打乱剩余角色
-    role_types.remove(RoleType.SEER)
+    role_types.remove(RoleType.WEREWOLF)
     random.shuffle(role_types)
 
     # 把猎人插入到第一个位置
-    role_types.insert(0, RoleType.SEER)
+    role_types.insert(0, RoleType.WEREWOLF)
 
     role_list = []
     for i in range(6):
@@ -72,6 +72,7 @@ def create_role():
         role_list.append(role)
 
     return role_list
+
 
 
 
